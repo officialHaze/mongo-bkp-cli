@@ -42,29 +42,39 @@ func execute(cmd *cobra.Command, args []string) {
 	switch strings.ToLower(ext) {
 	case "json":
 		cfg := getjsoncfg()
-
+		if cfg == nil {
+			os.Exit(1)
+		}
 		log.Printf("Found %d clusters", len(cfg.Confs))
 
-		cfgcount := 0
+		// Create a worker pool
+		wp := model.NewWorkerPool(8)
+		wp.Start() // Start the worker pool
+
 		for _, conf := range cfg.Confs {
-			cfgcount++
-			if cfg == nil {
-				continue
-			}
-			log.Printf("Following cluster conf number %d", cfgcount)
-			if toDump {
-				for _, dumpCfg := range conf.DumpCfgs {
-					dump(dumpCfg.DBName, conf.ClusterURI, dumpCfg.DownDir)
+			// Submit a job to the pool
+			wp.Submit(func() error {
+				if toDump {
+					for _, dumpCfg := range conf.DumpCfgs {
+						wp.Submit(func() error {
+							dump(dumpCfg.DBName, conf.ClusterURI, dumpCfg.DownDir)
+							return nil
+						})
+					}
 				}
-			}
 
-			if toRestore {
-				for _, resCfg := range conf.RestoreCfgs {
-					restore(resCfg.DBName, conf.ClusterURI, resCfg.UpDir)
+				if toRestore {
+					for _, resCfg := range conf.RestoreCfgs {
+						wp.Submit(func() error {
+							restore(resCfg.DBName, conf.ClusterURI, resCfg.UpDir)
+							return nil
+						})
+					}
 				}
-			}
+				return nil
+			})
 		}
-
+		wp.Stop()
 		return
 	default:
 		log.Println("Unsupported config file.")
@@ -178,7 +188,7 @@ func init() {
 	// configCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	configCmd.Flags().StringVarP(&cfgpath, "cfg-path", "p", "", "Absolute/Full path of the config file")
-	configCmd.Flags().BoolVarP(&toDump, "db-dump", "d", false, "Dump a DB")
+	configCmd.Flags().BoolVarP(&toDump, "db-dump", "d", true, "Dump a DB")
 	configCmd.Flags().BoolVarP(&toRestore, "db-restore", "r", false, "Restore a DB")
 
 	configCmd.MarkFlagRequired("cfg-path")
