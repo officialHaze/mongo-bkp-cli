@@ -54,23 +54,31 @@ func execute(cmd *cobra.Command, args []string) {
 		for _, conf := range cfg.Confs {
 			// Submit a job to the pool
 			wp.Submit(func() error {
+				innrWp := model.NewWorkerPool(4)
+				innrWp.Start()
+
 				if toDump {
+					// Inner pool
 					for _, dumpCfg := range conf.DumpCfgs {
-						wp.Submit(func() error {
+						innrWp.Submit(func() error {
 							dump(dumpCfg.DBName, conf.ClusterURI, dumpCfg.DownDir)
 							return nil
 						})
 					}
 				}
+				innrWp.Stop()
 
+				innrWp = model.NewWorkerPool(4)
+				innrWp.Start()
 				if toRestore {
 					for _, resCfg := range conf.RestoreCfgs {
-						wp.Submit(func() error {
+						innrWp.Submit(func() error {
 							restore(resCfg.DBName, conf.ClusterURI, resCfg.UpDir)
 							return nil
 						})
 					}
 				}
+				innrWp.Stop()
 				return nil
 			})
 		}
