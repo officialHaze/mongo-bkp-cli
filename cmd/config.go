@@ -45,13 +45,13 @@ func execute(cmd *cobra.Command, args []string) {
 		if cfg == nil {
 			os.Exit(1)
 		}
-		log.Printf("Found %d clusters", len(cfg.Confs))
+		log.Printf("Found %d clusters", len(cfg.Clusters))
 
 		// Create a worker pool
 		wp := model.NewWorkerPool(8)
 		wp.Start() // Start the worker pool
 
-		for _, conf := range cfg.Confs {
+		for _, conf := range cfg.Clusters {
 			// Submit a job to the pool
 			wp.Submit(func() error {
 				innrWp := model.NewWorkerPool(4)
@@ -73,7 +73,7 @@ func execute(cmd *cobra.Command, args []string) {
 				if toRestore {
 					for _, resCfg := range conf.RestoreCfgs {
 						innrWp.Submit(func() error {
-							restore(resCfg.DBName, conf.ClusterURI, resCfg.UpDir)
+							restore(resCfg.DBName, conf.ClusterURI, resCfg.UpDir, resCfg.UploadDBName)
 							return nil
 						})
 					}
@@ -130,9 +130,9 @@ func dump(dbname string, mongouri string, outdir string) {
 }
 
 // Method to handle db restore
-func restore(dbname string, mongouri string, updir string) {
+func restore(dbname, mongouri, updir, updbname string) {
 	log.Println("Starting DB restore...")
-	log.Printf("DB name - %s; Upload Directory - %s", dbname, updir)
+	log.Printf("DB name - %s; Upload Directory - %s; Up DB name - %s", dbname, updir, updbname)
 
 	// Check if the provided upload dir is actually a dir
 	if !util.IsDir(updir) {
@@ -141,7 +141,7 @@ func restore(dbname string, mongouri string, updir string) {
 	}
 
 	// Create the final directory over the upload dir
-	finalDir := path.Join(updir, dbname)
+	finalDir := path.Join(updir, updbname)
 
 	// have a check if the final dir exists
 	if !util.IsDir(finalDir) {

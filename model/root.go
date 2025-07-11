@@ -1,7 +1,7 @@
 package model
 
 type JsonCfg struct {
-	Confs []*ClusterCfg `json:"confs"`
+	Clusters []*ClusterCfg `json:"clusters"`
 }
 
 type ClusterCfg struct {
@@ -16,6 +16,7 @@ type DumpCfg struct {
 }
 
 type RestoreCfg struct {
-	DBName string `json:"dbName"`
-	UpDir  string `json:"upDir"`
+	DBName       string `json:"dbName"`
+	UploadDBName string `json:"uploaddbName"`
+	UpDir        string `json:"upDir"`
 }
